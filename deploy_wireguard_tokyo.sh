@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Tokyo server specific configuration
+SCRIPT_VERSION="2026-03-11.2"
 SERVER_PUBLIC_IP="101.36.117.231"
 PUBLIC_IF="eth0"
 WG_IF="wg0"
@@ -22,6 +23,8 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
+echo "[INFO] 脚本版本: ${SCRIPT_VERSION}"
+
 if [[ ! -f /etc/os-release ]]; then
   echo "[ERROR] 无法识别系统版本。" >&2
   exit 1
@@ -37,12 +40,16 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y wireguard qrencode ufw
 
-echo "[INFO] 开启 IP 转发..."
-cat >/etc/sysctl.d/99-wireguard-forward.conf <<SYSCTL
+echo "[INFO] 配置 IP 转发（持久化）..."
+SYSCTL_FILE="/etc/sysctl.d/99-wireguard-forward.conf"
+cat >"${SYSCTL_FILE}" <<SYSCTL
 net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 SYSCTL
-sysctl --system >/dev/null
+
+# 不在脚本内执行 sysctl，避免受限环境（容器/LXC）报 Operation not permitted。
+echo "[INFO] 已写入 ${SYSCTL_FILE}。"
+echo "[INFO] 若为完整云主机，重启后会自动生效；也可手动执行：sysctl -p ${SYSCTL_FILE}"
 
 mkdir -p /etc/wireguard /root/wg-clients
 chmod 700 /etc/wireguard /root/wg-clients

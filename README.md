@@ -23,6 +23,27 @@ sudo ./deploy_wireguard_tokyo.sh
 - 客户端配置：`/root/wg-clients/*.conf`
 - 终端二维码：可直接在 WireGuard 手机端扫码导入
 
+## 受限环境说明（你遇到的 sysctl 报错）
+
+如果你在容器或受限虚拟化环境中运行，可能看到：
+
+- `sysctl: setting key "net.ipv4.ip_forward": Operation not permitted`
+
+这通常是宿主机限制，不是脚本语法问题。脚本现在只负责写入 `/etc/sysctl.d/99-wireguard-forward.conf`，默认不在运行时执行 `sysctl`，从而避免受限环境报错。
+
+
+## 如果仍看到 `vm.max_map_count` 之类 sysctl 报错
+
+这代表你运行的还是旧脚本（旧版会使用 `sysctl --system`）。
+当前脚本启动时会打印版本号，并且**不会**执行 `sysctl --system`。
+
+可用下面命令确认：
+
+```bash
+grep -n "sysctl --system" deploy_wireguard_tokyo.sh || echo "OK: no sysctl --system"
+head -n 20 deploy_wireguard_tokyo.sh
+```
+
 ## 客户端导入
 
 - 手机：安装 WireGuard App，扫终端二维码导入。
