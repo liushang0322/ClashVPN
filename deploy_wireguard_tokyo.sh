@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Tokyo server specific configuration
-SCRIPT_VERSION="2026-03-11.4"
+SCRIPT_VERSION="2026-03-11.6"
 SERVER_PUBLIC_IP="101.36.117.231"
 PUBLIC_IF="eth0"
 WG_IF="wg0"
@@ -47,9 +47,14 @@ net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 SYSCTL
 
-# 不在脚本内执行 sysctl，避免受限环境（容器/LXC）报 Operation not permitted。
 echo "[INFO] 已写入 ${SYSCTL_FILE}。"
-echo "[INFO] 若为完整云主机，重启后会自动生效；也可手动执行：sysctl -p ${SYSCTL_FILE}"
+# 尝试立即生效，失败时仅告警（常见于受限容器/LXC）
+if sysctl -p "${SYSCTL_FILE}" >/dev/null 2>&1; then
+  echo "[INFO] IP 转发已生效。"
+else
+  echo "[WARN] 无法立即启用 IP 转发（受限环境常见）。"
+  echo "[WARN] 若客户端连上后无网络，请在宿主机/云主机层面开启 net.ipv4.ip_forward。"
+fi
 
 mkdir -p /etc/wireguard /root/wg-clients
 chmod 700 /etc/wireguard /root/wg-clients
@@ -104,9 +109,15 @@ done
 chmod 600 "${WG_CONF}"
 
 echo "[INFO] 配置 UFW 防火墙..."
+# 允许转发（否则常见症状是“客户端已连接但无网络”）
+if [[ -f /etc/default/ufw ]]; then
+  sed -i 's/^DEFAULT_FORWARD_POLICY=.*/DEFAULT_FORWARD_POLICY="ACCEPT"/' /etc/default/ufw
+fi
 ufw allow 22/tcp
 ufw allow ${WG_PORT}/udp
+ufw route allow in on ${WG_IF} out on ${PUBLIC_IF}
 ufw --force enable
+ufw reload
 
 echo "[INFO] 启动 WireGuard..."
 systemctl enable wg-quick@${WG_IF}
@@ -153,3 +164,43 @@ echo "[INFO] 可下载后在本地解压并导入 .conf。"
 
 echo "[DONE] 安装完成。默认不在终端打印大二维码，避免刷屏。"
 echo "[DONE] 可将 /root/wg-clients/*.conf 导入客户端，或使用 /root/wg-clients/qr/*.png 扫码导入。"
+
+
+echo
+echo "[CHECK] 部署后关键检查："
+if sysctl net.ipv4.ip_forward 2>/dev/null | grep -q '= 1'; then
+  echo "[OK] net.ipv4.ip_forward = 1"
+else
+  echo "[WARN] net.ipv4.ip_forward 不是 1，客户端可能连上但无网络。"
+fi
+
+if grep -q '^DEFAULT_FORWARD_POLICY="ACCEPT"' /etc/default/ufw 2>/dev/null; then
+  echo "[OK] UFW DEFAULT_FORWARD_POLICY=ACCEPT"
+else
+  echo "[WARN] UFW 转发策略不是 ACCEPT。"
+fi
+
+if ufw status 2>/dev/null | grep -q "${WG_PORT}/udp"; then
+  echo "[OK] UFW 已放行 ${WG_PORT}/udp"
+else
+  echo "[WARN] UFW 未看到 ${WG_PORT}/udp 放行规则。"
+fi
+
+if ufw status verbose 2>/dev/null | grep -qiE "route allow.*${WG_IF}.*${PUBLIC_IF}"; then
+  echo "[OK] UFW route 转发规则已存在"
+else
+  echo "[WARN] 未检测到 UFW route 转发规则（wg0 -> ${PUBLIC_IF}）。"
+fi
+
+if iptables -t nat -S 2>/dev/null | grep -q "-A POSTROUTING -s ${WG_NETWORK_CIDR} -o ${PUBLIC_IF} -j MASQUERADE"; then
+  echo "[OK] NAT MASQUERADE 规则已存在"
+else
+  echo "[WARN] 未检测到 NAT MASQUERADE 规则，可能尚未触发 wg-quick PostUp。"
+fi
+
+echo "[NEXT] 如果客户端仍无网络，请在服务器上执行："
+echo "       sudo wg show ${WG_IF}"
+echo "       sudo sysctl net.ipv4.ip_forward"
+echo "       sudo ufw status verbose"
+echo "       sudo iptables -t nat -S | grep MASQUERADE"
+echo "[NEXT] 同时检查云厂商安全组已放行 UDP ${WG_PORT}。"

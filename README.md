@@ -30,13 +30,13 @@ sudo ./deploy_wireguard_tokyo.sh
 
 - `sysctl: setting key "net.ipv4.ip_forward": Operation not permitted`
 
-这通常是宿主机限制，不是脚本语法问题。脚本现在只负责写入 `/etc/sysctl.d/99-wireguard-forward.conf`，默认不在运行时执行 `sysctl`，从而避免受限环境报错。
+这通常是宿主机限制，不是脚本语法问题。脚本会写入 `/etc/sysctl.d/99-wireguard-forward.conf`，并尝试 `sysctl -p` 立即生效；若环境受限则给出告警并继续。
 
 
 ## 如果仍看到 `vm.max_map_count` 之类 sysctl 报错
 
 这代表你运行的还是旧脚本（旧版会使用 `sysctl --system`）。
-当前脚本启动时会打印版本号，并且**不会**执行 `sysctl --system`。
+当前脚本启动时会打印版本号，并且不会执行 `sysctl --system`（仅针对 WireGuard 配置文件尝试 `sysctl -p`）。
 
 可用下面命令确认：
 
@@ -77,3 +77,59 @@ sudo systemctl restart wg-quick@wg0
 
 - 强烈建议 SSH 关闭密码登录，仅保留密钥登录。
 - 建议定期更新系统：`sudo apt update && sudo apt upgrade -y`。
+
+
+
+## 你现在需要做什么（最短路径）
+
+1. 在服务器重新执行一遍脚本：
+
+```bash
+sudo ./deploy_wireguard_tokyo.sh
+```
+
+2. 脚本末尾会打印 `[CHECK]` 自检结果。请确认至少这 5 项为 OK：
+   - `net.ipv4.ip_forward = 1`
+   - `UFW DEFAULT_FORWARD_POLICY=ACCEPT`
+   - `UFW 已放行 51820/udp`
+   - `UFW route 转发规则已存在`
+   - `NAT MASQUERADE 规则已存在`
+
+3. 若手机仍“已连接但没网”，把这 4 条命令输出发我：
+
+```bash
+sudo wg show wg0
+sudo sysctl net.ipv4.ip_forward
+sudo ufw status verbose
+sudo iptables -t nat -S | grep MASQUERADE
+```
+
+4. 最后确认云厂商安全组：
+   - 入站放行 `UDP 51820`
+   - 出站允许全部（或至少 DNS/HTTP/HTTPS）
+
+## 常见问题：手机显示已连接，但没有网络
+
+请按下面顺序检查：
+
+```bash
+# 1) 查看服务是否正常
+sudo wg show wg0
+sudo systemctl status wg-quick@wg0 --no-pager
+
+# 2) 查看内核转发
+sysctl net.ipv4.ip_forward
+
+# 3) 查看 UFW 转发策略和路由放行
+grep -n '^DEFAULT_FORWARD_POLICY' /etc/default/ufw
+sudo ufw status verbose
+
+# 4) 查看 NAT 规则是否存在
+sudo iptables -t nat -S | grep MASQUERADE
+```
+
+预期关键点：
+- `net.ipv4.ip_forward = 1`
+- `DEFAULT_FORWARD_POLICY="ACCEPT"`
+- `ufw status` 里有 `51820/udp` 和 `route allow in on wg0 out on eth0`
+
