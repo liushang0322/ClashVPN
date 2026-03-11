@@ -110,6 +110,9 @@ sudo iptables -t nat -S | grep MASQUERADE
 
 ## 常见问题：手机显示已连接，但没有网络
 
+> 说明：如果你曾看到 `grep: ... invalid context length argument`，这是旧版本脚本的 NAT 检查误报，升级到最新版后已修复。
+
+
 请按下面顺序检查：
 
 ```bash

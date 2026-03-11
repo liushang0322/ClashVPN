@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Tokyo server specific configuration
-SCRIPT_VERSION="2026-03-11.6"
+SCRIPT_VERSION="2026-03-11.7"
 SERVER_PUBLIC_IP="101.36.117.231"
 PUBLIC_IF="eth0"
 WG_IF="wg0"
@@ -186,13 +186,14 @@ else
   echo "[WARN] UFW 未看到 ${WG_PORT}/udp 放行规则。"
 fi
 
-if ufw status verbose 2>/dev/null | grep -qiE "route allow.*${WG_IF}.*${PUBLIC_IF}"; then
+if ufw status verbose 2>/dev/null | grep -qiE "(${WG_IF}.*${PUBLIC_IF}|${PUBLIC_IF}.*${WG_IF})"; then
   echo "[OK] UFW route 转发规则已存在"
 else
   echo "[WARN] 未检测到 UFW route 转发规则（wg0 -> ${PUBLIC_IF}）。"
 fi
 
-if iptables -t nat -S 2>/dev/null | grep -q "-A POSTROUTING -s ${WG_NETWORK_CIDR} -o ${PUBLIC_IF} -j MASQUERADE"; then
+NAT_RULE="-A POSTROUTING -s ${WG_NETWORK_CIDR} -o ${PUBLIC_IF} -j MASQUERADE"
+if iptables -t nat -S 2>/dev/null | grep -Fq -- "${NAT_RULE}"; then
   echo "[OK] NAT MASQUERADE 规则已存在"
 else
   echo "[WARN] 未检测到 NAT MASQUERADE 规则，可能尚未触发 wg-quick PostUp。"
