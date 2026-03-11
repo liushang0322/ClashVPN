@@ -133,3 +133,102 @@ sudo iptables -t nat -S | grep MASQUERADE
 - `DEFAULT_FORWARD_POLICY="ACCEPT"`
 - `ufw status` 里有 `51820/udp` 和 `route allow in on wg0 out on eth0`
 
+
+
+## 无法通过 scp 时：使用 Git 中转传输（建议加密）
+
+可以，但**不要把明文 `.conf` 直接提交到 Git 仓库**（里面有私钥）。
+
+推荐做法：在服务器上先加密，再通过 Git/网盘中转。
+
+### 服务器上（打包并加密）
+
+```bash
+cd /root/wg-clients
+sudo tar -czf /root/wg-clients-bundle.tar.gz .
+# 交互输入加密口令
+sudo openssl enc -aes-256-cbc -pbkdf2 -salt \
+  -in /root/wg-clients-bundle.tar.gz \
+  -out /root/wg-clients-bundle.tar.gz.enc
+```
+
+### 用 Git 中转（示例）
+
+```bash
+# 在服务器上
+mkdir -p ~/wg-transfer && cd ~/wg-transfer
+git init
+git checkout -b main
+cp /root/wg-clients-bundle.tar.gz.enc .
+git add wg-clients-bundle.tar.gz.enc
+git commit -m "add encrypted wireguard bundle"
+# 添加你自己的私有仓库后 push
+# git remote add origin <your-private-repo-url>
+# git push -u origin main
+```
+
+### 本地电脑（下载并解密）
+
+```bash
+git clone <your-private-repo-url>
+cd <repo-dir>
+openssl enc -d -aes-256-cbc -pbkdf2 \
+  -in wg-clients-bundle.tar.gz.enc \
+  -out wg-clients-bundle.tar.gz
+tar -xzf wg-clients-bundle.tar.gz
+```
+
+> 如果你不想走 Git，也可以把 `wg-clients-bundle.tar.gz.enc` 上传到临时网盘，再在本地下载解密。
+
+
+
+## 下载失败排障（你截图里的两类错误）
+
+### 1) `scp ... port 22: Connection timed out`
+
+这表示**网络层到服务器 22 端口不通**（不是账号/密码问题）。
+
+请在服务器控制台（VNC）确认：
+
+```bash
+sudo systemctl status ssh --no-pager
+sudo ss -lntp | grep :22
+sudo ufw status verbose
+```
+
+再到云厂商控制台确认安全组：
+
+- 入站必须放行 `TCP 22`（建议先临时放开 `0.0.0.0/0` 测试）
+- 入站放行 `UDP 51820`（WireGuard）
+
+在 Windows 本地先测连通性：
+
+```powershell
+Test-NetConnection 101.36.117.231 -Port 22
+```
+
+如果你自定义了 SSH 端口（比如 2222），下载要用：
+
+```bash
+scp -P 2222 root@101.36.117.231:/root/wg-clients/wg-clients-bundle.tar.gz .
+```
+
+### 2) `openssl ... Verify failure / bad password read`
+
+这通常是交互输入两次口令不一致，或命令未带 `-in/-out` 参数完整执行。
+
+建议直接用**非交互口令参数**（避免输入两次出错）：
+
+```bash
+# 在服务器上加密（把 YourStrongPass 改成你的强口令）
+sudo openssl enc -aes-256-cbc -pbkdf2 -salt   -pass pass:'YourStrongPass'   -in /root/wg-clients/wg-clients-bundle.tar.gz   -out /root/wg-clients/wg-clients-bundle.tar.gz.enc
+```
+
+本地解密：
+
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2   -pass pass:'YourStrongPass'   -in wg-clients-bundle.tar.gz.enc   -out wg-clients-bundle.tar.gz
+```
+
+> 口令里如果有特殊字符，请用单引号包裹；或改用纯字母数字强口令。
+
