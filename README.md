@@ -22,6 +22,7 @@ sudo ./deploy_wireguard_tokyo.sh
 - 服务端配置：`/etc/wireguard/wg0.conf`
 - 客户端配置：`/root/wg-clients/*.conf`
 - PNG 二维码：`/root/wg-clients/qr/*.png` 可直接扫码导入（默认不再终端刷屏）
+- PC/文件导入包：`/root/wg-clients/wg-clients-bundle.tar.gz`（含全部 `.conf` 与 `qr/`）
 
 ## 受限环境说明（你遇到的 sysctl 报错）
 
@@ -54,7 +55,15 @@ SHOW_QR_IN_TERMINAL=1 sudo ./deploy_wireguard_tokyo.sh
 ## 客户端导入
 
 - 手机：安装 WireGuard App，优先扫描 `/root/wg-clients/qr/*.png`。
-- 电脑：WireGuard 客户端导入 `/root/wg-clients/pc1.conf` 或 `/root/wg-clients/pc2.conf`。
+- 电脑（推荐）：WireGuard 客户端使用“从文件导入隧道”，导入 `/root/wg-clients/*.conf`。
+- 如果需要一次性下载到本地：先下载 `/root/wg-clients/wg-clients-bundle.tar.gz`，解压后导入 `.conf` 文件。
+
+示例（在你本地电脑执行）：
+
+```bash
+scp root@101.36.117.231:/root/wg-clients/wg-clients-bundle.tar.gz .
+tar -xzf wg-clients-bundle.tar.gz
+```
 
 ## 常用命令
 

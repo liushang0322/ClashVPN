@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Tokyo server specific configuration
-SCRIPT_VERSION="2026-03-11.3"
+SCRIPT_VERSION="2026-03-11.4"
 SERVER_PUBLIC_IP="101.36.117.231"
 PUBLIC_IF="eth0"
 WG_IF="wg0"
@@ -138,6 +138,18 @@ for client in "${CLIENTS[@]}"; do
     echo
   fi
 done
+
+ARCHIVE_FILE="/root/wg-clients/wg-clients-bundle.tar.gz"
+tar -czf "${ARCHIVE_FILE}" -C /root wg-clients
+chmod 600 "${ARCHIVE_FILE}"
+
+echo "[INFO] PC 端推荐使用 .conf 文件导入（不依赖二维码）："
+echo "       /root/wg-clients/phone1.conf"
+echo "       /root/wg-clients/phone2.conf"
+echo "       /root/wg-clients/pc1.conf"
+echo "       /root/wg-clients/pc2.conf"
+echo "[INFO] 已生成打包文件：${ARCHIVE_FILE}"
+echo "[INFO] 可下载后在本地解压并导入 .conf。"
 
 echo "[DONE] 安装完成。默认不在终端打印大二维码，避免刷屏。"
 echo "[DONE] 可将 /root/wg-clients/*.conf 导入客户端，或使用 /root/wg-clients/qr/*.png 扫码导入。"
