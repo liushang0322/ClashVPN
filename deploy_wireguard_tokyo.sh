@@ -2,7 +2,6 @@
 set -euo pipefail
 
 # Tokyo server specific configuration
-SCRIPT_VERSION="2026-03-11.1"
 SERVER_PUBLIC_IP="101.36.117.231"
 PUBLIC_IF="eth0"
 WG_IF="wg0"
@@ -23,8 +22,6 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
-echo "[INFO] 脚本版本: ${SCRIPT_VERSION}"
-
 if [[ ! -f /etc/os-release ]]; then
   echo "[ERROR] 无法识别系统版本。" >&2
   exit 1
@@ -41,19 +38,11 @@ apt-get update -y
 apt-get install -y wireguard qrencode ufw
 
 echo "[INFO] 开启 IP 转发..."
-SYSCTL_FILE="/etc/sysctl.d/99-wireguard-forward.conf"
-cat >"${SYSCTL_FILE}" <<SYSCTL
+cat >/etc/sysctl.d/99-wireguard-forward.conf <<SYSCTL
 net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 SYSCTL
-
-# 仅尝试设置 WireGuard 相关键值，避免全局加载 sysctl 配置。
-if sysctl -q -w net.ipv4.ip_forward=1 >/dev/null 2>&1 && \
-   sysctl -q -w net.ipv6.conf.all.forwarding=1 >/dev/null 2>&1; then
-  echo "[INFO] IP 转发已启用。"
-else
-  echo "[WARN] 当前环境禁止修改内核转发参数（常见于容器），已写入 ${SYSCTL_FILE} 供可控环境生效。"
-fi
+sysctl --system >/dev/null
 
 mkdir -p /etc/wireguard /root/wg-clients
 chmod 700 /etc/wireguard /root/wg-clients
