@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Tokyo server specific configuration
-SCRIPT_VERSION="2026-03-11.2"
+SCRIPT_VERSION="2026-03-11.3"
 SERVER_PUBLIC_IP="101.36.117.231"
 PUBLIC_IF="eth0"
 WG_IF="wg0"
@@ -115,14 +115,29 @@ systemctl restart wg-quick@${WG_IF}
 echo "[INFO] 当前服务状态："
 wg show "${WG_IF}" || true
 
+QR_DIR="/root/wg-clients/qr"
+mkdir -p "${QR_DIR}"
+chmod 700 "${QR_DIR}"
+
 echo
+echo "[INFO] 客户端配置与二维码文件："
 for client in "${CLIENTS[@]}"; do
   IFS=':' read -r client_name _ <<<"${client}"
   conf_file="/root/wg-clients/${client_name}.conf"
-  echo "================ ${client_name} ================"
-  echo "配置文件：${conf_file}"
-  qrencode -t ansiutf8 <"${conf_file}" || true
-  echo
+  qr_file="${QR_DIR}/${client_name}.png"
+  qrencode -o "${qr_file}" -r "${conf_file}"
+  chmod 600 "${qr_file}"
+
+  echo "- ${client_name}:"
+  echo "  conf: ${conf_file}"
+  echo "  qr  : ${qr_file}"
+
+  # 如需在终端显示二维码，执行：SHOW_QR_IN_TERMINAL=1 sudo ./deploy_wireguard_tokyo.sh
+  if [[ "${SHOW_QR_IN_TERMINAL:-0}" == "1" ]]; then
+    qrencode -t ansiutf8 <"${conf_file}" || true
+    echo
+  fi
 done
 
-echo "[DONE] 安装完成。可将 /root/wg-clients/*.conf 导入手机/电脑 WireGuard 客户端。"
+echo "[DONE] 安装完成。默认不在终端打印大二维码，避免刷屏。"
+echo "[DONE] 可将 /root/wg-clients/*.conf 导入客户端，或使用 /root/wg-clients/qr/*.png 扫码导入。"

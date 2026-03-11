@@ -21,7 +21,7 @@ sudo ./deploy_wireguard_tokyo.sh
 
 - 服务端配置：`/etc/wireguard/wg0.conf`
 - 客户端配置：`/root/wg-clients/*.conf`
-- 终端二维码：可直接在 WireGuard 手机端扫码导入
+- PNG 二维码：`/root/wg-clients/qr/*.png` 可直接扫码导入（默认不再终端刷屏）
 
 ## 受限环境说明（你遇到的 sysctl 报错）
 
@@ -44,9 +44,16 @@ grep -n "sysctl --system" deploy_wireguard_tokyo.sh || echo "OK: no sysctl --sys
 head -n 20 deploy_wireguard_tokyo.sh
 ```
 
+
+如果你仍希望在终端直接打印二维码，可临时开启：
+
+```bash
+SHOW_QR_IN_TERMINAL=1 sudo ./deploy_wireguard_tokyo.sh
+```
+
 ## 客户端导入
 
-- 手机：安装 WireGuard App，扫终端二维码导入。
+- 手机：安装 WireGuard App，优先扫描 `/root/wg-clients/qr/*.png`。
 - 电脑：WireGuard 客户端导入 `/root/wg-clients/pc1.conf` 或 `/root/wg-clients/pc2.conf`。
 
 ## 常用命令
