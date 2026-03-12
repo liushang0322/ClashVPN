@@ -59,14 +59,15 @@ PASSWORD="$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 22)"
 OBFS_PASS="$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 22)"
 
 mkdir -p /etc/hysteria/certs
-chmod 700 /etc/hysteria /etc/hysteria/certs
+chmod 750 /etc/hysteria /etc/hysteria/certs
 
 echo "[INFO] 生成自签证书..."
 openssl req -x509 -nodes -newkey rsa:2048 -days 3650 \
   -keyout /etc/hysteria/certs/server.key \
   -out /etc/hysteria/certs/server.crt \
   -subj "/CN=${PUBLIC_IP}" >/dev/null 2>&1
-chmod 600 /etc/hysteria/certs/server.key /etc/hysteria/certs/server.crt
+chown root:hysteria /etc/hysteria/certs/server.key /etc/hysteria/certs/server.crt
+chmod 640 /etc/hysteria/certs/server.key /etc/hysteria/certs/server.crt
 
 cat >/etc/hysteria/config.yaml <<CFG
 listen: :${HY2_PORT}
@@ -93,7 +94,8 @@ bandwidth:
   up: ${HY2_UP_BW}
   down: ${HY2_DOWN_BW}
 CFG
-chmod 600 /etc/hysteria/config.yaml
+chown root:hysteria /etc/hysteria/config.yaml
+chmod 640 /etc/hysteria/config.yaml
 
 cat >/etc/systemd/system/hysteria-server.service <<'UNIT'
 [Unit]

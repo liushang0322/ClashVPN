@@ -238,6 +238,18 @@ openssl enc -d -aes-256-cbc -pbkdf2   -pass pass:'YourStrongPass'   -in wg-clien
 
 
 ## 可选：并行部署 Hysteria2（用于对比速度）
+### Hysteria2 启动失败（permission denied）
+
+如果日志出现 `open /etc/hysteria/config.yaml: permission denied`，执行：
+
+```bash
+sudo chown root:hysteria /etc/hysteria/config.yaml /etc/hysteria/certs/server.key /etc/hysteria/certs/server.crt
+sudo chmod 640 /etc/hysteria/config.yaml /etc/hysteria/certs/server.key /etc/hysteria/certs/server.crt
+sudo chmod 750 /etc/hysteria /etc/hysteria/certs
+sudo systemctl restart hysteria-server
+sudo systemctl status hysteria-server --no-pager
+```
+
 
 如果你想和 WireGuard 做 A/B 速度对比，可执行：
 
