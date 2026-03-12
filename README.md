@@ -235,3 +235,20 @@ openssl enc -d -aes-256-cbc -pbkdf2   -pass pass:'YourStrongPass'   -in wg-clien
 
 > 口令里如果有特殊字符，请用单引号包裹；或改用纯字母数字强口令。
 
+
+
+## 可选：并行部署 Hysteria2（用于对比速度）
+
+如果你想和 WireGuard 做 A/B 速度对比，可执行：
+
+```bash
+chmod +x deploy_hysteria2_tokyo.sh
+sudo ./deploy_hysteria2_tokyo.sh
+```
+
+脚本会输出一条 `hy2://` URI，并保存到：
+
+- `/root/hy2-clients/hy2-uri.txt`
+
+该脚本为并行部署，不会覆盖现有 WireGuard 配置。
+
