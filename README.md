@@ -252,3 +252,5 @@ sudo ./deploy_hysteria2_tokyo.sh
 
 该脚本为并行部署，不会覆盖现有 WireGuard 配置。
 
+- 若 GitHub `tag_name` 为 `app/vX.Y.Z`，脚本已兼容解析并自动回退下载路径。
+

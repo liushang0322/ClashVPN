@@ -6,12 +6,14 @@ HY2_PORT="8443"
 HY2_DOMAIN_FALLBACK="www.microsoft.com"
 HY2_UP_BW="30 mbps"
 HY2_DOWN_BW="30 mbps"
+SCRIPT_VERSION="2026-03-12.1"
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "[ERROR] 请使用 root 运行：sudo bash $0" >&2
   exit 1
 fi
 
+echo "[INFO] 脚本版本: ${SCRIPT_VERSION}"
 echo "[INFO] 安装依赖..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
@@ -27,15 +29,21 @@ case "${ARCH_RAW}" in
     ;;
 esac
 
-LATEST_TAG="$(curl -fsSL https://api.github.com/repos/apernet/hysteria/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' | head -n1)"
+LATEST_JSON="$(curl -fsSL https://api.github.com/repos/apernet/hysteria/releases/latest)"
+LATEST_TAG="$(printf '%s\n' "${LATEST_JSON}" | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p' | head -n1)"
 if [[ -z "${LATEST_TAG}" ]]; then
-  echo "[ERROR] 无法获取 Hysteria2 最新版本。" >&2
+  echo "[ERROR] 无法获取 Hysteria2 最新版本 tag_name。" >&2
   exit 1
 fi
 
 echo "[INFO] 下载 Hysteria2 ${LATEST_TAG} (${ARCH})..."
 BIN_URL="https://github.com/apernet/hysteria/releases/download/${LATEST_TAG}/hysteria-linux-${ARCH}"
-curl -fL "${BIN_URL}" -o /usr/local/bin/hysteria
+if ! curl -fL "${BIN_URL}" -o /usr/local/bin/hysteria; then
+  echo "[WARN] 直接下载失败，尝试去掉 tag 前缀重试..."
+  TAG_FALLBACK="${LATEST_TAG#app/}"
+  BIN_URL="https://github.com/apernet/hysteria/releases/download/${TAG_FALLBACK}/hysteria-linux-${ARCH}"
+  curl -fL "${BIN_URL}" -o /usr/local/bin/hysteria
+fi
 chmod +x /usr/local/bin/hysteria
 
 if ! id -u hysteria >/dev/null 2>&1; then
