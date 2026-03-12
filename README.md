@@ -245,9 +245,11 @@ openssl enc -d -aes-256-cbc -pbkdf2   -pass pass:'YourStrongPass'   -in wg-clien
 ```bash
 sudo chown root:hysteria /etc/hysteria/config.yaml /etc/hysteria/certs/server.key /etc/hysteria/certs/server.crt
 sudo chmod 640 /etc/hysteria/config.yaml /etc/hysteria/certs/server.key /etc/hysteria/certs/server.crt
+sudo chown root:hysteria /etc/hysteria /etc/hysteria/certs
 sudo chmod 750 /etc/hysteria /etc/hysteria/certs
 sudo systemctl restart hysteria-server
 sudo systemctl status hysteria-server --no-pager
+sudo systemctl is-active --quiet hysteria-server && echo OK || echo FAIL
 ```
 
 

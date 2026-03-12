@@ -6,7 +6,7 @@ HY2_PORT="8443"
 HY2_DOMAIN_FALLBACK="www.microsoft.com"
 HY2_UP_BW="30 mbps"
 HY2_DOWN_BW="30 mbps"
-SCRIPT_VERSION="2026-03-12.1"
+SCRIPT_VERSION="2026-03-12.2"
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "[ERROR] 请使用 root 运行：sudo bash $0" >&2
@@ -59,6 +59,7 @@ PASSWORD="$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 22)"
 OBFS_PASS="$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 22)"
 
 mkdir -p /etc/hysteria/certs
+chown root:hysteria /etc/hysteria /etc/hysteria/certs
 chmod 750 /etc/hysteria /etc/hysteria/certs
 
 echo "[INFO] 生成自签证书..."
@@ -136,12 +137,19 @@ printf '%s\n' "${URI}" >/root/hy2-clients/hy2-uri.txt
 chmod 600 /root/hy2-clients/hy2-uri.txt
 
 echo
-echo "================= Hysteria2 部署完成 ================="
-echo "服务状态:"
-systemctl --no-pager --full status hysteria-server | sed -n '1,12p' || true
-echo
-echo "连接信息（可直接复制到支持 Hysteria2 的客户端）："
-echo "${URI}"
-echo
-echo "已保存到: /root/hy2-clients/hy2-uri.txt"
-echo "======================================================="
+echo "================= Hysteria2 部署结果 ================="
+if systemctl is-active --quiet hysteria-server; then
+  echo "[OK] hysteria-server 已启动"
+  systemctl --no-pager --full status hysteria-server | sed -n '1,12p' || true
+  echo
+  echo "连接信息（可直接复制到支持 Hysteria2 的客户端）："
+  echo "${URI}"
+  echo
+  echo "已保存到: /root/hy2-clients/hy2-uri.txt"
+  echo "======================================================="
+else
+  echo "[ERROR] hysteria-server 启动失败，最近日志如下：" >&2
+  journalctl -u hysteria-server -n 50 --no-pager >&2 || true
+  echo "[ERROR] 请按日志修复后重试。" >&2
+  exit 1
+fi
